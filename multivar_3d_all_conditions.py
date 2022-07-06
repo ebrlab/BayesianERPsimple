@@ -14,7 +14,7 @@ import theano.tensor as tt
 import pickle
 
 
-path = "D:/Git/Reading/erp_gaussian_group_condition/"
+path = "/erp_gaussian_group_condition/"
 
 #####plotting parameters
 plt.rcParams.update({'font.size': 12})
@@ -477,7 +477,8 @@ cortopo = mne.viz.plot_topomap(corr['Pz'].values, info, names=chans,
 plt.rcParams['text.color'] = "k"
 plt.rcParams.update({'font.size': 16})
 cbar = plt.colorbar(cortopo[0])
-cbar.set_label('correlation to Pz')
+cbar.set_label('LKJ ϱ mean')
+plt.suptitle("Pz Correlations", x=0.44)
 plt.tight_layout()
 plt.savefig('corrs_topo.png', dpi=300)
 plt.close()
