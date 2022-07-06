@@ -84,19 +84,354 @@ plt.close()
 
 
 # ###################### SAMPLE ##########################    
-with mod:
-    trace = pm.sample(1000, tune=1000, chains=4, cores=8, init='adapt_diag',
-                      compute_convergence_checks=False, target_accept=0.9)
+# with mod:
+#     trace = pm.sample(1000, tune=1000, chains=4, cores=8, init='adapt_diag',
+#                       compute_convergence_checks=False, target_accept=0.9)
 
 
 # ######################## save trace ###########################
 tracedir = path+"trace/"
-pm.backends.ndarray.save_trace(trace, directory=tracedir, overwrite=True)
+# pm.backends.ndarray.save_trace(trace, directory=tracedir, overwrite=True)
 
-##load trace
-# with mod:
-#     trace = pm.load_trace(tracedir)
+#load trace
+with mod:
+    trace = pm.load_trace(tracedir)
 
+
+
+###### Plot Posteriors Learners #####
+fig, axs = plt.subplots(2,2, figsize=(14,10))
+for i in range(3):
+    if i == 0:
+        ax = axs[0,0]
+        t = 1
+        c='teal'
+    if i == 1:
+        ax = axs[0,1]#
+        t = 2
+        c='limegreen'
+    if i == 2:
+        ax = axs[1,0]
+        t = 3
+        c='sienna'
+    odiff = amps[0,0,12,:]-amps[0,t,12,:]
+    pdiff = trace['M'][:,12,0,0,:]-trace['M'][:,12,0,t,:]
+    postm = pdiff.mean(axis=0)
+    posth5, posth95 = az.hdi(pdiff, hdi_prob=0.9).T
+    ax.set_ylim([-3,9])
+    ax.grid(alpha=0.2, zorder=-1)
+    ax.axvline(0, color='k', zorder=-1, linestyle=':')
+    ax.axhline(0, color='k', zorder=-1, linestyle=':')
+    ax.plot(times, odiff, alpha=0.3, color='k', label="observed voltage")
+    ax.plot(times, postm, color=c, label="posterior mean")
+    ax.fill_between(times, posth5, posth95, color=c, alpha=0.3, label="90% HDI")
+    ax.set_ylabel('Amplitude (μV)')
+    ax.set_xlabel('Time (s)')
+    ax.legend(fontsize=16, loc='lower right')
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.set_title('Pz: Tone4 - Tone'+str(i+1))
+axs[1,1].axis("off")
+plt.tight_layout()
+plt.savefig('posteriors_learners.png', dpi=300)
+plt.close()
+
+###### Plot Predictions Learners #####
+with mod:
+    preds = pm.sample_posterior_predictive(trace)
+
+fig, axs = plt.subplots(2,2, figsize=(14,10))
+for i in range(3):
+    if i == 0:
+        ax = axs[0,0]
+        t = 1
+        c='teal'
+    if i == 1:
+        ax = axs[0,1]#
+        t = 2
+        c='limegreen'
+    if i == 2:
+        ax = axs[1,0]
+        t = 3
+        c='sienna'
+    odiff = amps[0,0,12,:]-amps[0,t,12,:]
+    pdiff = preds['y'][:,0,0,12,:]-preds['y'][:,0,t,12,:]
+    predm = pdiff.mean(axis=0)
+    pred_sdl = predm - pdiff.std(axis=0)
+    pred_sdh = predm + pdiff.std(axis=0)
+    ax.set_ylim([-3,9])
+    ax.grid(alpha=0.2, zorder=-1)
+    ax.axvline(0, color='k', zorder=-1, linestyle=':')
+    ax.axhline(0, color='k', zorder=-1, linestyle=':')
+    ax.plot(times, odiff, alpha=0.3, color='k', label="observed voltage")
+    ax.plot(times, predm, color=c, label="predicted mean")
+    ax.fill_between(times, pred_sdl, pred_sdh, color=c, alpha=0.3, label="predicted SD")
+    ax.set_ylabel('Amplitude (μV)')
+    ax.set_xlabel('Time (s)')
+    ax.legend(fontsize=16, loc='lower right')
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.set_title('Pz: Tone4 - Tone'+str(i+1))
+axs[1,1].axis("off")
+plt.tight_layout()
+plt.savefig('predictions_learners.png', dpi=300)
+plt.close()
+
+
+###### Plot All Electrodes Posterior Contrasts Learners ######
+path_con = path+"results/electrodes_contrasts_learners/"
+for e in tqdm(range(E)): 
+    chan = chans[e]
+    fig, axs = plt.subplots(2,2, figsize=(14,10))
+    for i in range(3):
+        if i == 0:
+            ax = axs[0,0]
+            t = 1
+            c='teal'
+        if i == 1:
+            ax = axs[0,1]#
+            t = 2
+            c='limegreen'
+        if i == 2:
+            ax = axs[1,0]
+            t = 3
+            c='sienna'
+        odiff = amps[0,0,e,:]-amps[0,t,e,:]
+        pdiff = trace['M'][:,e,0,0,:]-trace['M'][:,e,0,t,:]
+        postm = pdiff.mean(axis=0)
+        posth5, posth95 = az.hdi(pdiff, hdi_prob=0.9).T
+        ax.set_ylim([-3,9])
+        ax.grid(alpha=0.2, zorder=-1)
+        ax.axvline(0, color='k', zorder=-1, linestyle=':')
+        ax.axhline(0, color='k', zorder=-1, linestyle=':')
+        ax.plot(times, odiff, alpha=0.3, color='k', label="observed voltage")
+        ax.plot(times, postm, color=c, label="posterior mean")
+        ax.fill_between(times, posth5, posth95, color=c, alpha=0.3, label="90% HDI")
+        ax.set_ylabel('Amplitude (μV)')
+        ax.set_xlabel('Time (s)')
+        ax.legend(fontsize=16, loc='lower right')
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.set_title(chan+': Tone4 - Tone'+str(i+1))
+    axs[1,1].axis("off")
+    plt.tight_layout()
+    plt.savefig(path_con+chan+'_posteriors_learners.png', dpi=300)
+    plt.close()
+
+###### Plot Topomaps Learners ########
+non_targets = np.array([trace['M'][:,:,0,1,:], trace['M'][:,:,0,2,:], trace['M'][:,:,0,3,:]]).mean(axis=0)
+pdiff = trace['M'][:,:,0,0,:]-non_targets
+#pdiff = pdiff[:,:,77:205].mean(axis=2)
+mdiff = pdiff.mean(axis=0)
+h5diff,h95diff = np.array([az.hdi(pdiff[:,e,:], hdi_prob=0.9) for e in range(E)]).T
+
+info_path = path+"data_l/info_200ms_baseline.pickle"
+with open(info_path, 'rb') as handle:
+    info = pickle.load(handle)
+    
+h5ev = mne.EvokedArray(h5diff[51:].T, info)
+mev = mne.EvokedArray(mdiff.T[51:].T, info)
+h95ev = mne.EvokedArray(h95diff[51:].T, info)
+
+selt = [0.2,0.4,0.6,0.8]
+
+mne.viz.plot_evoked_topomap(h5ev, times=selt, scalings=1, vmin=-5, vmax=5, show=False)
+plt.savefig('topomap_learners_h5.png', dpi=300)
+plt.close()
+mne.viz.plot_evoked_topomap(mev, times=selt, scalings=1, vmin=-5, vmax=5, show=False)
+plt.savefig('topomap_learners_mean.png', dpi=300)
+plt.close()
+mne.viz.plot_evoked_topomap(h95ev, times=selt, scalings=1, vmin=-5, vmax=5, show=False)
+plt.savefig('topomap_learners_h95.png', dpi=300)
+plt.close()
+
+######################Non Learners ########################
+
+###### Plot Posteriors Non Learners #####
+fig, axs = plt.subplots(2,2, figsize=(14,10))
+for i in range(3):
+    if i == 0:
+        ax = axs[0,0]
+        t = 1
+        c='teal'
+    if i == 1:
+        ax = axs[0,1]#
+        t = 2
+        c='limegreen'
+    if i == 2:
+        ax = axs[1,0]
+        t = 3
+        c='sienna'
+    odiff = amps[0,0,12,:]-amps[0,t,12,:]
+    pdiff = trace['M'][:,12,0,0,:]-trace['M'][:,12,0,t,:]
+    postm = pdiff.mean(axis=0)
+    posth5, posth95 = az.hdi(pdiff, hdi_prob=0.9).T
+    ax.set_ylim([-3,9])
+    ax.grid(alpha=0.2, zorder=-1)
+    ax.axvline(0, color='k', zorder=-1, linestyle=':')
+    ax.axhline(0, color='k', zorder=-1, linestyle=':')
+    ax.plot(times, odiff, alpha=0.3, color='k', label="observed voltage")
+    ax.plot(times, postm, color=c, label="posterior mean")
+    ax.fill_between(times, posth5, posth95, color=c, alpha=0.3, label="90% HDI")
+    ax.set_ylabel('Amplitude (μV)')
+    ax.set_xlabel('Time (s)')
+    ax.legend(fontsize=16, loc='lower right')
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.set_title('Pz: Tone4 - Tone'+str(i+1))
+axs[1,1].axis("off")
+plt.tight_layout()
+plt.savefig('posteriors_non_learners.png', dpi=300)
+plt.close()
+
+###### Plot Predictions Non Learners #####
+with mod:
+    preds = pm.sample_posterior_predictive(trace)
+
+fig, axs = plt.subplots(2,2, figsize=(14,10))
+for i in range(3):
+    if i == 0:
+        ax = axs[0,0]
+        t = 1
+        c='teal'
+    if i == 1:
+        ax = axs[0,1]#
+        t = 2
+        c='limegreen'
+    if i == 2:
+        ax = axs[1,0]
+        t = 3
+        c='sienna'
+    odiff = amps[0,0,12,:]-amps[0,t,12,:]
+    pdiff = preds['y'][:,0,0,12,:]-preds['y'][:,0,t,12,:]
+    predm = pdiff.mean(axis=0)
+    pred_sdl = predm - pdiff.std(axis=0)
+    pred_sdh = predm + pdiff.std(axis=0)
+    ax.set_ylim([-3,9])
+    ax.grid(alpha=0.2, zorder=-1)
+    ax.axvline(0, color='k', zorder=-1, linestyle=':')
+    ax.axhline(0, color='k', zorder=-1, linestyle=':')
+    ax.plot(times, odiff, alpha=0.3, color='k', label="observed voltage")
+    ax.plot(times, predm, color=c, label="predicted mean")
+    ax.fill_between(times, pred_sdl, pred_sdh, color=c, alpha=0.3, label="predicted SD")
+    ax.set_ylabel('Amplitude (μV)')
+    ax.set_xlabel('Time (s)')
+    ax.legend(fontsize=16, loc='lower right')
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.set_title('Pz: Tone4 - Tone'+str(i+1))
+axs[1,1].axis("off")
+plt.tight_layout()
+plt.savefig('predictions_non_learners.png', dpi=300)
+plt.close()
+
+
+###### Plot All Electrodes Posterior Contrasts Non Learners ######
+path_con = path+"results/electrodes_contrasts_non_learners/"
+for e in tqdm(range(E)): 
+    chan = chans[e]
+    fig, axs = plt.subplots(2,2, figsize=(14,10))
+    for i in range(3):
+        if i == 0:
+            ax = axs[0,0]
+            t = 1
+            c='teal'
+        if i == 1:
+            ax = axs[0,1]#
+            t = 2
+            c='limegreen'
+        if i == 2:
+            ax = axs[1,0]
+            t = 3
+            c='sienna'
+        odiff = amps[0,0,e,:]-amps[0,t,e,:]
+        pdiff = trace['M'][:,e,0,0,:]-trace['M'][:,e,0,t,:]
+        postm = pdiff.mean(axis=0)
+        posth5, posth95 = az.hdi(pdiff, hdi_prob=0.9).T
+        ax.set_ylim([-3,9])
+        ax.grid(alpha=0.2, zorder=-1)
+        ax.axvline(0, color='k', zorder=-1, linestyle=':')
+        ax.axhline(0, color='k', zorder=-1, linestyle=':')
+        ax.plot(times, odiff, alpha=0.3, color='k', label="observed voltage")
+        ax.plot(times, postm, color=c, label="posterior mean")
+        ax.fill_between(times, posth5, posth95, color=c, alpha=0.3, label="90% HDI")
+        ax.set_ylabel('Amplitude (μV)')
+        ax.set_xlabel('Time (s)')
+        ax.legend(fontsize=16, loc='lower right')
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.set_title(chan+': Tone4 - Tone'+str(i+1))
+    axs[1,1].axis("off")
+    plt.tight_layout()
+    plt.savefig(path_con+chan+'_posteriors_non_learners.png', dpi=300)
+    plt.close()
+
+###### Plot Topomaps Non Learners ########
+non_targets = np.array([trace['M'][:,:,0,1,:], trace['M'][:,:,0,2,:], trace['M'][:,:,0,3,:]]).mean(axis=0)
+pdiff = trace['M'][:,:,0,0,:]-non_targets
+#pdiff = pdiff[:,:,77:205].mean(axis=2)
+mdiff = pdiff.mean(axis=0)
+h5diff,h95diff = np.array([az.hdi(pdiff[:,e,:], hdi_prob=0.9) for e in range(E)]).T
+
+info_path = path+"data_nl/info_200ms_baseline.pickle"
+with open(info_path, 'rb') as handle:
+    info = pickle.load(handle)
+    
+h5ev = mne.EvokedArray(h5diff[51:].T, info)
+mev = mne.EvokedArray(mdiff.T[51:].T, info)
+h95ev = mne.EvokedArray(h95diff[51:].T, info)
+
+selt = [0.2,0.4,0.6,0.8]
+
+mne.viz.plot_evoked_topomap(h5ev, times=selt, scalings=1, vmin=-5, vmax=5, show=False)
+plt.savefig('topomap_non_learners_h5.png', dpi=300)
+plt.close()
+mne.viz.plot_evoked_topomap(mev, times=selt, scalings=1, vmin=-5, vmax=5, show=False)
+plt.savefig('topomap_non_learners_mean.png', dpi=300)
+plt.close()
+mne.viz.plot_evoked_topomap(h95ev, times=selt, scalings=1, vmin=-5, vmax=5, show=False)
+plt.savefig('topomap_non_learners_h95.png', dpi=300)
+plt.close()
+
+#############################################
+############################################
+
+######### Save summaries ##########
+#summpath = "/grw_lkj_learners/tranks/"
+summ = az.summary(trace, hdi_prob=0.9, round_to=4)
+summ = pd.DataFrame(summ)
+summ.to_csv('summary.csv')
+print("summary saved")
+
+bfmi = az.bfmi(trace)
+bfmi = pd.DataFrame(bfmi)
+bfmi.to_csv('bfmi.csv')
+print("bfmi saved") 
+
+ener = az.plot_energy(trace)
+plt.savefig("energy.png", dpi=300)
+plt.close()
+
+########### Model fit
+
+# loo = az.loo(trace, pointwise=True)
+# loo = pd.DataFrame(loo)
+# loo.to_csv("loo.csv")
+
+# waic = az.waic(trace, pointwise=True)
+# waic = pd.DataFrame(waic)
+# waic.to_csv('waic.csv')
+
+###plot rank
+path_tranks = path+"tranks/"
+varias = [v for v in trace.varnames if not "__" in v]
+for var in tqdm(varias):
+    err = az.plot_rank(trace, var_names=[var], kind='vlines', ref_line=True,
+                       vlines_kwargs={'lw':1}, marker_vlines_kwargs={'lw':2})
+    plt.savefig(path_tranks+var+'_trank.png', dpi=300)
+    plt.close()
+
+######################################################################################
 
 ######################## Plot Example electrode #################
 #os.chdir("D:/_0Reading/_OHBM/eeg_grw/grw_3d_groups/posterior_estimates_comparison/")
